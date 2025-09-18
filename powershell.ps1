@@ -1,5 +1,5 @@
 Function Invoke-Sync365 {
-    [Cmdletbinding()]
+    [CmdletBinding()]
     [Alias('Sync365')]
     Param (
         [Parameter(Mandatory = $false)]
@@ -10,13 +10,20 @@ Function Invoke-Sync365 {
         [String]$Policy = 'delta'
     )
 
-    if ($env:AzureSyncServer) {
-        Invoke-Command -ComputerName $env:AzureSyncServer -ScriptBlock {
-            Start-ADSyncSyncCycle -PolicyType $Policy
-        }
+    # Use parameter if provided, otherwise fallback to environment variable
+    if (-not $AzureSyncServer) {
+        $AzureSyncServer = $env:AzureSyncServer
     } else {
-        Write-Warning "You must specify the Azure Sync Server using the 'AzureSyncServer' parameter first!"
-        $env:AzureSyncServer = $AzureSyncServer
+        # Optionally, set the env variable for future use (remove if not desired)
         [Environment]::SetEnvironmentVariable("AzureSyncServer", "$AzureSyncServer", "User")
+    }
+
+    if ($AzureSyncServer) {
+        Invoke-Command -ComputerName $AzureSyncServer -ScriptBlock {
+            param($RemotePolicy)
+            Start-ADSyncSyncCycle -PolicyType $RemotePolicy
+        } -ArgumentList $Policy
+    } else {
+        Write-Warning "You must specify the Azure Sync Server using the 'AzureSyncServer' parameter or set the 'AzureSyncServer' environment variable first!"
     }
 }
